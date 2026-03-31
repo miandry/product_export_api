@@ -68,8 +68,16 @@ class ProductExportApiController extends ControllerBase {
       $query->condition('status', (int) $published);
     }
 
-    $total = (int) $query->count()->execute();
+    $count_query = clone $query;
+    $total = (int) $count_query->count()->execute();
+
     $nids = $query->range($offset, $limit)->execute();
+    if (is_string($nids) || is_int($nids)) {
+      $nids = [(int) $nids];
+    }
+    elseif (!is_array($nids)) {
+      $nids = [];
+    }
     $nodes = $storage->loadMultiple($nids);
 
     $items = [];
