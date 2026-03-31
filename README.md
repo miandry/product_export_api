@@ -22,9 +22,9 @@ Le endpoint liste retourne:
 - `total`, `limit`, `offset`, `count`
 - pagination: `has_prev`, `has_next`, `prev_offset`, `next_offset`
 - `links`: `self`, `first`, `last`, `prev`, `next`
-- `items`: tableau des produits
+- `ids`: tableau des `nid` produits pour la page courante
 
-Chaque produit contient:
+Le detail complet d'un produit est disponible via `GET /api/products/{nid}`:
 
 - Infos de base: `nid`, `uuid`, `type`, `langcode`, `title`, `status`, `created`, `changed`
 - `fields`: tous les champs personnalises

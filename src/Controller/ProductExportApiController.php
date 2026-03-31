@@ -71,22 +71,13 @@ class ProductExportApiController extends ControllerBase {
     $count_query = clone $query;
     $total = (int) $count_query->count()->execute();
 
-    $items = [];
     $nids = $query->range($offset, $limit)->execute();
     if (!is_array($nids)) {
       $nids = [$nids];
     }
     $nids = array_values(array_filter(array_map('intval', $nids)));
 
-    foreach ($nids as $nid) {
-      $node = $storage->load($nid);
-      if (!$node instanceof NodeInterface) {
-        continue;
-      }
-      $items[] = $this->normalizeProduct($node);
-    }
-
-    $count = count($items);
+    $count = count($nids);
     $has_prev = $offset > 0;
     $has_next = ($offset + $count) < $total;
     $prev_offset = max(0, $offset - $limit);
@@ -111,7 +102,6 @@ class ProductExportApiController extends ControllerBase {
       'prev_offset' => $has_prev ? $prev_offset : NULL,
       'next_offset' => $has_next ? $next_offset : NULL,
       'links' => $links,
-      'items' => $items,
     ]);
   }
 
