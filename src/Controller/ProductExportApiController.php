@@ -4,7 +4,6 @@ namespace Drupal\product_export_api\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,18 +27,10 @@ class ProductExportApiController extends ControllerBase {
   protected $entityTypeManager;
 
   /**
-   * File URL generator.
-   *
-   * @var \Drupal\Core\File\FileUrlGeneratorInterface
-   */
-  protected $fileUrlGenerator;
-
-  /**
    * Constructor.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, FileUrlGeneratorInterface $file_url_generator) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->fileUrlGenerator = $file_url_generator;
   }
 
   /**
@@ -47,8 +38,7 @@ class ProductExportApiController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity_type.manager'),
-      $container->get('file_url_generator')
+      $container->get('entity_type.manager')
     );
   }
 
@@ -184,7 +174,7 @@ class ProductExportApiController extends ControllerBase {
    */
   protected function buildFileUrl($uri) {
     try {
-      return $this->fileUrlGenerator->generateAbsoluteString((string) $uri);
+      return file_create_url((string) $uri);
     }
     catch (\Throwable $exception) {
       return '';
