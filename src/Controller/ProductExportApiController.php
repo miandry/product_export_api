@@ -71,17 +71,15 @@ class ProductExportApiController extends ControllerBase {
     $count_query = clone $query;
     $total = (int) $count_query->count()->execute();
 
-    $nids = $query->range($offset, $limit)->execute();
-    if (is_string($nids) || is_int($nids)) {
-      $nids = [(int) $nids];
-    }
-    elseif (!is_array($nids)) {
-      $nids = [];
-    }
-    $nodes = $storage->loadMultiple($nids);
-
     $items = [];
-    foreach ($nodes as $node) {
+    $nids = $query->range($offset, $limit)->execute();
+    if (!is_array($nids)) {
+      $nids = [$nids];
+    }
+    $nids = array_values(array_filter(array_map('intval', $nids)));
+
+    foreach ($nids as $nid) {
+      $node = $storage->load($nid);
       if (!$node instanceof NodeInterface) {
         continue;
       }
@@ -92,6 +90,7 @@ class ProductExportApiController extends ControllerBase {
       'total' => $total,
       'limit' => $limit,
       'offset' => $offset,
+      'ids' => $nids,
       'count' => count($items),
       'items' => $items,
     ]);
