@@ -86,12 +86,31 @@ class ProductExportApiController extends ControllerBase {
       $items[] = $this->normalizeProduct($node);
     }
 
+    $count = count($items);
+    $has_prev = $offset > 0;
+    $has_next = ($offset + $count) < $total;
+    $prev_offset = max(0, $offset - $limit);
+    $next_offset = $offset + $limit;
+
+    $links = [
+      'self' => $this->buildPageUrl($request, $limit, $offset),
+      'first' => $this->buildPageUrl($request, $limit, 0),
+      'last' => $this->buildPageUrl($request, $limit, $this->buildLastOffset($total, $limit)),
+      'prev' => $has_prev ? $this->buildPageUrl($request, $limit, $prev_offset) : NULL,
+      'next' => $has_next ? $this->buildPageUrl($request, $limit, $next_offset) : NULL,
+    ];
+
     return new JsonResponse([
       'total' => $total,
       'limit' => $limit,
       'offset' => $offset,
       'ids' => $nids,
-      'count' => count($items),
+      'count' => $count,
+      'has_prev' => $has_prev,
+      'has_next' => $has_next,
+      'prev_offset' => $has_prev ? $prev_offset : NULL,
+      'next_offset' => $has_next ? $next_offset : NULL,
+      'links' => $links,
       'items' => $items,
     ]);
   }
@@ -186,6 +205,27 @@ class ProductExportApiController extends ControllerBase {
     catch (\Throwable $exception) {
       return '';
     }
+  }
+
+  /**
+   * Builds last pagination offset.
+   */
+  protected function buildLastOffset($total, $limit) {
+    if ($total <= 0 || $limit <= 0) {
+      return 0;
+    }
+    return (int) (floor(($total - 1) / $limit) * $limit);
+  }
+
+  /**
+   * Builds URL for a pagination page.
+   */
+  protected function buildPageUrl(Request $request, $limit, $offset) {
+    $query = $request->query->all();
+    $query['limit'] = (int) $limit;
+    $query['offset'] = (int) $offset;
+
+    return $request->getSchemeAndHttpHost() . $request->getPathInfo() . '?' . http_build_query($query);
   }
 
 }

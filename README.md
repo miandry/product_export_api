@@ -20,6 +20,8 @@ Pour `GET /api/products`:
 Le endpoint liste retourne:
 
 - `total`, `limit`, `offset`, `count`
+- pagination: `has_prev`, `has_next`, `prev_offset`, `next_offset`
+- `links`: `self`, `first`, `last`, `prev`, `next`
 - `items`: tableau des produits
 
 Chaque produit contient:
