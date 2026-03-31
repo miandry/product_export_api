@@ -17,7 +17,7 @@ class ProductExportApiController extends ControllerBase {
   /**
    * Max page size.
    */
-  private const MAX_LIMIT = 500;
+  private const MAX_LIMIT = 100;
 
   /**
    * Entity type manager.
@@ -46,71 +46,83 @@ class ProductExportApiController extends ControllerBase {
    * Returns paginated products.
    */
   public function listProducts(Request $request) {
-    $limit = (int) $request->query->get('limit', 100);
-    $offset = (int) $request->query->get('offset', 0);
-    $published = $request->query->get('published');
-    $include_total = $request->query->get('include_total') === '1';
+    try {
+      $limit = (int) $request->query->get('limit', 50);
+      $offset = (int) $request->query->get('offset', 0);
+      $published = $request->query->get('published');
+      $include_total = $request->query->get('include_total') === '1';
+      $after_nid = max(0, (int) $request->query->get('after_nid', 0));
 
-    if ($limit < 1) {
-      $limit = 100;
+      if ($limit < 1) {
+        $limit = 50;
+      }
+      $limit = min($limit, static::MAX_LIMIT);
+      if ($offset < 0) {
+        $offset = 0;
+      }
+
+      $storage = $this->entityTypeManager->getStorage('node');
+      $query = $storage->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('type', 'produit')
+        ->sort('nid', 'ASC');
+
+      if ($published !== NULL && ($published === '0' || $published === '1')) {
+        $query->condition('status', (int) $published);
+      }
+
+      // Cursor pagination is more stable than large OFFSET on big datasets.
+      if ($after_nid > 0) {
+        $query->condition('nid', $after_nid, '>');
+        $offset = 0;
+      }
+
+      $nids = $query->range($offset, $limit + 1)->execute();
+      if (!is_array($nids)) {
+        $nids = [$nids];
+      }
+      $nids = array_values(array_filter(array_map('intval', $nids)));
+
+      $has_prev = $offset > 0 || $after_nid > 0;
+      $has_next = count($nids) > $limit;
+      if ($has_next) {
+        array_pop($nids);
+      }
+      $count = count($nids);
+      $total = NULL;
+      if ($include_total) {
+        $count_query = clone $query;
+        $total = (int) $count_query->count()->execute();
+      }
+
+      $prev_offset = max(0, $offset - $limit);
+      $next_offset = $offset + $limit;
+      $next_after_nid = $count > 0 ? end($nids) : NULL;
+
+      return new JsonResponse([
+        'total' => $total,
+        'limit' => $limit,
+        'offset' => $offset,
+        'after_nid' => $after_nid,
+        'next_after_nid' => $has_next ? $next_after_nid : NULL,
+        'include_total' => $include_total,
+        'ids' => $nids,
+        'count' => $count,
+        'has_prev' => $has_prev,
+        'has_next' => $has_next,
+        'prev_offset' => $has_prev ? $prev_offset : NULL,
+        'next_offset' => $has_next ? $next_offset : NULL,
+      ]);
     }
-    $limit = min($limit, static::MAX_LIMIT);
-    if ($offset < 0) {
-      $offset = 0;
+    catch (\Throwable $exception) {
+      $this->getLogger('product_export_api')->error('Products API failed: @message', [
+        '@message' => $exception->getMessage(),
+      ]);
+      return new JsonResponse([
+        'error' => 'Products API failed.',
+        'message' => $exception->getMessage(),
+      ], 500);
     }
-
-    $storage = $this->entityTypeManager->getStorage('node');
-    $query = $storage->getQuery()
-      ->accessCheck(FALSE)
-      ->condition('type', 'produit')
-      ->sort('nid', 'ASC');
-
-    if ($published !== NULL && ($published === '0' || $published === '1')) {
-      $query->condition('status', (int) $published);
-    }
-
-    $nids = $query->range($offset, $limit + 1)->execute();
-    if (!is_array($nids)) {
-      $nids = [$nids];
-    }
-    $nids = array_values(array_filter(array_map('intval', $nids)));
-
-    $has_prev = $offset > 0;
-    $has_next = count($nids) > $limit;
-    if ($has_next) {
-      array_pop($nids);
-    }
-    $count = count($nids);
-    $total = NULL;
-    if ($include_total) {
-      $count_query = clone $query;
-      $total = (int) $count_query->count()->execute();
-    }
-
-    $prev_offset = max(0, $offset - $limit);
-    $next_offset = $offset + $limit;
-
-    $links = [
-      'self' => $this->buildPageUrl($request, $limit, $offset),
-      'first' => $this->buildPageUrl($request, $limit, 0),
-      'last' => is_int($total) ? $this->buildPageUrl($request, $limit, $this->buildLastOffset($total, $limit)) : NULL,
-      'prev' => $has_prev ? $this->buildPageUrl($request, $limit, $prev_offset) : NULL,
-      'next' => $has_next ? $this->buildPageUrl($request, $limit, $next_offset) : NULL,
-    ];
-
-    return new JsonResponse([
-      'total' => $total,
-      'limit' => $limit,
-      'offset' => $offset,
-      'include_total' => $include_total,
-      'ids' => $nids,
-      'count' => $count,
-      'has_prev' => $has_prev,
-      'has_next' => $has_next,
-      'prev_offset' => $has_prev ? $prev_offset : NULL,
-      'next_offset' => $has_next ? $next_offset : NULL,
-      'links' => $links,
-    ]);
   }
 
   /**
@@ -203,27 +215,6 @@ class ProductExportApiController extends ControllerBase {
     catch (\Throwable $exception) {
       return '';
     }
-  }
-
-  /**
-   * Builds last pagination offset.
-   */
-  protected function buildLastOffset($total, $limit) {
-    if ($total <= 0 || $limit <= 0) {
-      return 0;
-    }
-    return (int) (floor(($total - 1) / $limit) * $limit);
-  }
-
-  /**
-   * Builds URL for a pagination page.
-   */
-  protected function buildPageUrl(Request $request, $limit, $offset) {
-    $query = $request->query->all();
-    $query['limit'] = (int) $limit;
-    $query['offset'] = (int) $offset;
-
-    return $request->getSchemeAndHttpHost() . $request->getPathInfo() . '?' . http_build_query($query);
   }
 
 }

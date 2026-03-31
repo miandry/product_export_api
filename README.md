@@ -11,8 +11,9 @@ Module Drupal pour exporter les produits (type de contenu `produit`) vers une au
 
 Pour `GET /api/products`:
 
-- `limit` (defaut `100`, max `500`)
+- `limit` (defaut `50`, max `100`)
 - `offset` (defaut `0`)
+- `after_nid` (optionnel, pagination curseur recommandee)
 - `published` (optionnel: `0` ou `1`)
 - `include_total` (optionnel: `1` pour calculer `total`, plus couteux)
 
@@ -20,9 +21,8 @@ Pour `GET /api/products`:
 
 Le endpoint liste retourne:
 
-- `total`, `limit`, `offset`, `count`
+- `total`, `limit`, `offset`, `after_nid`, `next_after_nid`, `count`
 - pagination: `has_prev`, `has_next`, `prev_offset`, `next_offset`
-- `links`: `self`, `first`, `last`, `prev`, `next`
 - `ids`: tableau des `nid` produits pour la page courante
 
 Le detail complet d'un produit est disponible via `GET /api/products/{nid}`:
