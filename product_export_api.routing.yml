@@ -1,0 +1,18 @@
+product_export_api.list:
+  path: '/api/products'
+  defaults:
+    _controller: '\Drupal\product_export_api\Controller\ProductExportApiController::listProducts'
+    _title: 'Products API'
+  requirements:
+    _permission: 'access content'
+  methods: [GET]
+
+product_export_api.detail:
+  path: '/api/products/{nid}'
+  defaults:
+    _controller: '\Drupal\product_export_api\Controller\ProductExportApiController::productDetail'
+    _title: 'Product detail'
+  requirements:
+    _permission: 'access content'
+    nid: '\d+'
+  methods: [GET]

@@ -1,0 +1,5 @@
+name: 'Product Export API'
+type: module
+description: 'Expose des endpoints API pour exporter les produits.'
+package: 'Custom'
+core_version_requirement: ^8 || ^9 || ^10
