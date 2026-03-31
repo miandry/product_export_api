@@ -14,6 +14,7 @@ Pour `GET /api/products`:
 - `limit` (defaut `100`, max `500`)
 - `offset` (defaut `0`)
 - `published` (optionnel: `0` ou `1`)
+- `include_total` (optionnel: `1` pour calculer `total`, plus couteux)
 
 ## Reponse
 

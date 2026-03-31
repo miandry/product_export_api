@@ -49,6 +49,7 @@ class ProductExportApiController extends ControllerBase {
     $limit = (int) $request->query->get('limit', 100);
     $offset = (int) $request->query->get('offset', 0);
     $published = $request->query->get('published');
+    $include_total = $request->query->get('include_total') === '1';
 
     if ($limit < 1) {
       $limit = 100;
@@ -68,25 +69,31 @@ class ProductExportApiController extends ControllerBase {
       $query->condition('status', (int) $published);
     }
 
-    $count_query = clone $query;
-    $total = (int) $count_query->count()->execute();
-
-    $nids = $query->range($offset, $limit)->execute();
+    $nids = $query->range($offset, $limit + 1)->execute();
     if (!is_array($nids)) {
       $nids = [$nids];
     }
     $nids = array_values(array_filter(array_map('intval', $nids)));
 
-    $count = count($nids);
     $has_prev = $offset > 0;
-    $has_next = ($offset + $count) < $total;
+    $has_next = count($nids) > $limit;
+    if ($has_next) {
+      array_pop($nids);
+    }
+    $count = count($nids);
+    $total = NULL;
+    if ($include_total) {
+      $count_query = clone $query;
+      $total = (int) $count_query->count()->execute();
+    }
+
     $prev_offset = max(0, $offset - $limit);
     $next_offset = $offset + $limit;
 
     $links = [
       'self' => $this->buildPageUrl($request, $limit, $offset),
       'first' => $this->buildPageUrl($request, $limit, 0),
-      'last' => $this->buildPageUrl($request, $limit, $this->buildLastOffset($total, $limit)),
+      'last' => is_int($total) ? $this->buildPageUrl($request, $limit, $this->buildLastOffset($total, $limit)) : NULL,
       'prev' => $has_prev ? $this->buildPageUrl($request, $limit, $prev_offset) : NULL,
       'next' => $has_next ? $this->buildPageUrl($request, $limit, $next_offset) : NULL,
     ];
@@ -95,6 +102,7 @@ class ProductExportApiController extends ControllerBase {
       'total' => $total,
       'limit' => $limit,
       'offset' => $offset,
+      'include_total' => $include_total,
       'ids' => $nids,
       'count' => $count,
       'has_prev' => $has_prev,
